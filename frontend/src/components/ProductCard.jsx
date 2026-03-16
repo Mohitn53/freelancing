@@ -3,6 +3,8 @@ import { Heart, Plus, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { wishlistApi } from '../services/api';
 
 const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: initWished = false }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -10,6 +12,7 @@ const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: ini
   const [added, setAdded] = useState(false);
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { token } = useAuth();
 
   const handleQuickView = (e) => {
     e.stopPropagation();
@@ -18,12 +21,38 @@ const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: ini
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     addToCart({ id, image, name, price }, 'M', 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
 
   const fmt = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
+
+  const toggleWishlist = async (e) => {
+    e.stopPropagation();
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    const nextState = !isWished;
+    setIsWished(nextState); // Optimistic
+
+    try {
+      if (nextState) {
+        await wishlistApi.add(id);
+      } else {
+        await wishlistApi.delete(id);
+      }
+    } catch (err) {
+      console.error('Wishlist sync failed:', err);
+      setIsWished(!nextState); // Rollback
+    }
+  };
 
   return (
     <motion.div 
@@ -63,7 +92,7 @@ const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: ini
         
         <div className="flex flex-col items-end gap-1">
           <button 
-            onClick={(e) => { e.stopPropagation(); setIsWished(!isWished); }}
+            onClick={toggleWishlist}
             className="p-1 hover:scale-110 transition-transform cursor-pointer"
           >
             <Heart 

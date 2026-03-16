@@ -1,25 +1,97 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+// src/pages/WishlistPage.jsx
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
+import { wishlistApi } from '../services/api';
+import { Heart, ShoppingBag } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const WishlistPage = () => {
-  const items = [
-    { id: 1, name: 'T-Shirt Basic Oversize White', price: 40.0, image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80' },
-    { id: 4, name: 'Erigo Hoodie Kagoshima Dark', price: 29.12, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80' },
-  ];
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { token, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchWishlist = async () => {
+      try {
+        const res = await wishlistApi.get();
+        if (res.success && res.data) {
+          setItems(res.data.map(item => item.products).filter(Boolean));
+        }
+      } catch (err) {
+        console.error('Failed to fetch wishlist:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWishlist();
+  }, [token, authLoading]);
+
+  if (loading || authLoading) {
+    return <div className="min-h-[60vh] flex items-center justify-center font-black uppercase tracking-widest text-gray-300">Loading Wishlist...</div>;
+  }
+
+  if (!token) {
+    return (
+      <div className="w-full max-w-[1440px] mx-auto px-5 md:px-10 py-24 flex flex-col items-center justify-center text-center">
+        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+          <Heart size={40} className="text-red-200" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tighter uppercase mb-4">Auth Required</h1>
+        <p className="text-gray-500 mb-8 max-w-sm">Login to save your favorite drops and access them anywhere on any device.</p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link to="/login" className="bg-primary text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_#555] hover:-translate-y-1 transition-transform">Login to Save</Link>
+          <Link to="/products" className="bg-white text-primary border-2 border-primary px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:-translate-y-1 transition-transform">Browse Collection</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="w-full max-w-[1440px] mx-auto px-5 md:px-10 py-24 flex flex-col items-center justify-center text-center">
+        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6">
+          <Heart size={40} className="text-red-200" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tighter uppercase mb-4">Your wishlist is empty</h1>
+        <p className="text-gray-500 mb-8 max-w-sm">Save items you love and they'll appear here. Start curating your personal collection today.</p>
+        <Link 
+          to="/products"
+          className="bg-primary text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-[4px_4px_0px_#555] hover:-translate-y-1 transition-transform"
+        >
+          Explore Drops
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container section">
-      <h1 style={{ fontSize: '32px', textTransform: 'none', marginBottom: '32px' }}>Your Wishlist</h1>
-      {items.length === 0 ? (
-        <p>No items in wishlist yet.</p>
-      ) : (
-        <div className="grid grid-cols-4">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-[1440px] mx-auto px-5 md:px-10 py-16">
+      <h1 className="text-4xl font-black tracking-tighter uppercase mb-12">Wishlist <span className="text-gray-300 ml-2">({items.length})</span></h1>
+      
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+        <AnimatePresence>
           {items.map(product => (
-            <ProductCard key={product.id} {...product} />
+            <ProductCard 
+              key={product.id} 
+              id={product.id}
+              name={product.name}
+              subtitle={product.subtitle || product.category}
+              price={product.price}
+              image={product.image_url || product.image}
+              isWished={true}
+            />
           ))}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };

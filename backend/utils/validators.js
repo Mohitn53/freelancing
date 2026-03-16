@@ -24,9 +24,7 @@ export const isValidEmail = (email) =>
  */
 export const isValidPassword = (password) => {
   if (typeof password !== 'string') return false;
-  const strongPassword =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^])[A-Za-z\d@$!%*?&#^]{8,}$/;
-  return strongPassword.test(password);
+  return password.length >= 6;
 };
 
 // ─── Required fields ──────────────────────────────────────────────────────────

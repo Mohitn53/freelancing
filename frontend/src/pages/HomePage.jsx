@@ -1,19 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
 import ProductCard from '../components/ProductCard';
-
-const DUMMY_PRODUCTS = [
-  { id: 1, name: 'Core Hoodie', subtitle: 'Black / Grey', price: 7400, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=800&q=80', isWished: true },
-  { id: 2, name: 'Essential Tank', subtitle: 'White / Black', price: 3200, image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80', isWished: false },
-  { id: 3, name: 'Contrast Tee', subtitle: 'Black/White', price: 4900, image: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=800&q=80', isWished: false },
-  { id: 4, name: 'Base Crop', subtitle: 'White', price: 4900, image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80', isWished: false },
-];
+import { productsApi } from '../services/api';
 
 const HomePage = () => {
-  const [activeTab, setActiveTab] = useState('Women');
+  const [activeTab, setActiveTab] = useState('All');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchNewArrivals = async () => {
+      setLoading(true);
+      try {
+        const res = await productsApi.list(1, activeTab === 'All' ? '' : activeTab);
+        if (res.data && res.data.length > 0) {
+          setProducts(res.data.slice(0, 4));
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch arrivals:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNewArrivals();
+  }, [activeTab]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="page" exit={{ opacity: 0 }}>
@@ -28,7 +43,7 @@ const HomePage = () => {
           <h2 className="text-4xl font-black tracking-tighter m-0 font-sans text-primary uppercase">New Arrivals</h2>
           
           <div className="flex items-center bg-[#f5f5f5] rounded-full p-1 border border-gray-100 shadow-sm overflow-x-auto max-w-full">
-            {['Men', 'Women', 'Bags', 'Shoes', 'Accessories'].map((cat) => (
+            {['All', 'Men', 'Women', 'Bags', 'Shoes'].map((cat) => (
               <button 
                 key={cat}
                 onClick={() => setActiveTab(cat)}
@@ -50,11 +65,30 @@ const HomePage = () => {
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-          {DUMMY_PRODUCTS.map(product => (
-            <ProductCard key={product.id} {...product} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+             {[1,2,3,4].map(i => (
+               <div key={i} className="aspect-[3/4] bg-gray-50 animate-pulse rounded-2xl" />
+             ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
+             <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No products found in this category</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+            {products.map(product => (
+              <ProductCard 
+                key={product.id} 
+                id={product.id}
+                name={product.name}
+                subtitle={product.category}
+                price={product.price}
+                image={product.image_url}
+              />
+            ))}
+          </div>
+        )}
 
       </div>
     </motion.div>

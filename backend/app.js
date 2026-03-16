@@ -14,6 +14,8 @@ import productRoutes from './routes/productRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 // ── Error Middleware ──────────────────────────────────────────────────────────
 import { notFound, globalErrorHandler } from './middleware/errorMiddleware.js';
@@ -46,6 +48,8 @@ app.use(
 );
 
 // ─── Global Rate Limiting ─────────────────────────────────────────────────────
+// Commented out for local development to avoid 429 errors during testing
+/*
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 100,
@@ -54,6 +58,7 @@ const limiter = rateLimit({
   message: { success: false, message: 'Too many requests – please try again later.' },
 });
 app.use(limiter);
+*/
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
@@ -71,11 +76,13 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/projects', projectRoutes);
-app.use('/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/orders', orderRoutes);
 
 // ─── 404 & Global Error Handlers ─────────────────────────────────────────────
 app.use(notFound);

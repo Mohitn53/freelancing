@@ -61,8 +61,7 @@ export const signup = async (req, res, next) => {
     if (!isValidPassword(password)) {
       return res.status(400).json({
         success: false,
-        message:
-          'Password must be ≥8 chars and include uppercase, lowercase, digit, and special character.',
+        message: 'Password must be at least 6 characters long.',
       });
     }
 

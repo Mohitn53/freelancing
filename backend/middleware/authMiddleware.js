@@ -30,20 +30,33 @@ export const verifyToken = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify signature against Supabase JWT secret
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    // Verify token using official Supabase Auth API
+    // This is more reliable than manual JWT verification
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-    // Attach the decoded payload so downstream handlers can use it
-    req.user = decoded;
+    if (error || !user) {
+      console.error('Supabase auth error:', error?.message);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token.',
+      });
+    }
+
+    // Attach user to request. Map user.id to req.user.id and req.user.sub
+    // to maintain compatibility with existing controllers.
+    req.user = {
+      ...user,
+      id: user.id,
+      sub: user.id
+    };
 
     next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: 'Token expired.' });
-    }
-    return res
-      .status(401)
-      .json({ success: false, message: 'Invalid token.' });
+  } catch (err) {
+    console.error('Auth middleware server error:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication.',
+    });
   }
 };
 

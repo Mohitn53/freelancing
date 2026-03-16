@@ -5,6 +5,8 @@ import { useParams } from 'react-router-dom';
 import { Heart, Minus, Plus, ShoppingBag, Check } from 'lucide-react';
 import { productsApi, wishlistApi } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const FALLBACK = [
   { id: 1, name: 'Core Hoodie', subtitle: 'Black / Grey', price: 7400, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80', description: 'Premium quality hoodie designed for maximum comfort and streetwear styling. Made from heavy cotton for a structured yet soft feel.' },
@@ -27,6 +29,8 @@ const ProductDetailsPage = () => {
   const [wishLoading, setWishLoading] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
   const { addToCart } = useCart();
+  const { token } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +48,10 @@ const ProductDetailsPage = () => {
   }, [id]);
 
   const handleWishlist = async () => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     setWishLoading(true);
     try {
       if (isWished) {
@@ -60,6 +68,10 @@ const ProductDetailsPage = () => {
   };
 
   const handleAddToCart = () => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     addToCart({
       id: product.id,
       name: product.name,

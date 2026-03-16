@@ -31,10 +31,10 @@ router.get('/', async (req, res) => {
 
 router.put('/', async (req, res) => {
   try {
-    const { full_name, phone } = req.body;
+    const { name, phone } = req.body;
     const { data, error } = await supabase
       .from('profiles')
-      .update({ full_name, phone, updated_at: new Date().toISOString() })
+      .update({ name, phone, updated_at: new Date().toISOString() })
       .eq('id', req.user.id)
       .select().single();
     if (error) throw error;

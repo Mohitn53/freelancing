@@ -1,8 +1,10 @@
 // ProfilePage.jsx – full profile with order history, addresses, payment methods
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Package, MapPin, CreditCard, LogOut, ChevronRight, Plus, Check, Edit2, Trash2 } from 'lucide-react';
+import { User, Package, MapPin, CreditCard, LogOut, ChevronRight, Plus, Check, Edit2, Trash2, ShoppingBag } from 'lucide-react';
 import { profileApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const fmt = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
 
@@ -13,20 +15,6 @@ const TABS = [
   { id: 'payments', label: 'Payment Methods', icon: CreditCard },
 ];
 
-// ─── Mock data (used when backend not connected) ─────────────────────────────
-const MOCK_ORDERS = [
-  { id: 'ORD-1001', created_at: '2025-12-10', status: 'Delivered', total: 15800, order_items: [{ products: { name: 'Core Hoodie', image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=100&q=80' }, quantity: 1 }] },
-  { id: 'ORD-1002', created_at: '2026-01-22', status: 'In Transit', total: 7400, order_items: [{ products: { name: 'Essential Tank', image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=100&q=80' }, quantity: 2 }] },
-];
-
-const MOCK_ADDRESSES = [
-  { id: 1, full_name: 'Mohit Sharma', line1: '42 Streetwear Lane', city: 'Mumbai', state: 'Maharashtra', pincode: '400001', phone: '+91 98765 43210', is_default: true },
-];
-
-const MOCK_PAYMENTS = [
-  { id: 1, brand: 'Visa', last4: '4242', exp_month: 12, exp_year: 2027, is_default: true },
-];
-
 const StatusBadge = ({ status }) => {
   const colors = { Delivered: 'bg-green-50 text-green-600', 'In Transit': 'bg-blue-50 text-blue-600', Pending: 'bg-yellow-50 text-yellow-700', Cancelled: 'bg-red-50 text-red-600' };
   return <span className={`text-xs font-semibold px-3 py-1 rounded-full ${colors[status] || 'bg-gray-100 text-gray-600'}`}>{status}</span>;
@@ -34,91 +22,134 @@ const StatusBadge = ({ status }) => {
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('profile');
-  const [profile, setProfile] = useState({ full_name: 'Mohit Sharma', email: 'mohit@dropcodes.in', phone: '' });
-  const [orders, setOrders] = useState(MOCK_ORDERS);
-  const [addresses, setAddresses] = useState(MOCK_ADDRESSES);
-  const [payments, setPayments] = useState(MOCK_PAYMENTS);
+  const [profile, setProfile] = useState({ name: '', email: '', phone: '' });
+  const [orders, setOrders] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ full_name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '', is_default: false });
+  const [loading, setLoading] = useState(true);
+
+  const { token, handleLogout, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Load from API if token exists
-    const token = localStorage.getItem('dropcode_token');
-    if (!token) return;
-    profileApi.get().then(r => r.data && setProfile(r.data)).catch(() => {});
-    profileApi.orders().then(r => r.data?.length && setOrders(r.data)).catch(() => {});
-    profileApi.addresses().then(r => r.data?.length && setAddresses(r.data)).catch(() => {});
-    profileApi.paymentMethods().then(r => r.data?.length && setPayments(r.data)).catch(() => {});
-  }, []);
+    if (authLoading) return;
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [profRes, ordRes, addrRes, payRes] = await Promise.all([
+          profileApi.get(),
+          profileApi.orders(),
+          profileApi.addresses(),
+          profileApi.paymentMethods()
+        ]);
+
+        if (profRes.success) setProfile(profRes.data);
+        if (ordRes.success) setOrders(ordRes.data);
+        if (addrRes.success) setAddresses(ordRes.data);
+        if (payRes.success) setPayments(payRes.data);
+      } catch (err) {
+        console.error('Failed to fetch profile data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [token, authLoading]);
 
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      await profileApi.update({ full_name: profile.full_name, phone: profile.phone });
-    } catch {}
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+      await profileApi.update({ name: profile.name, phone: profile.phone });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error('Update failed:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAddAddress = async () => {
     try {
       const res = await profileApi.addAddress(newAddress);
-      setAddresses(prev => [...prev, res.data]);
-    } catch {
-      setAddresses(prev => [...prev, { ...newAddress, id: Date.now() }]);
+      if (res.success) {
+        setAddresses(prev => [...prev, res.data]);
+        setShowAddressForm(false);
+        setNewAddress({ full_name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '', is_default: false });
+      }
+    } catch (err) {
+      console.error('Failed to add address:', err);
     }
-    setShowAddressForm(false);
-    setNewAddress({ full_name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '', is_default: false });
   };
 
   const handleDeleteAddress = async (id) => {
-    try { await profileApi.deleteAddress(id); } catch {}
-    setAddresses(prev => prev.filter(a => a.id !== id));
+    try {
+      const res = await profileApi.deleteAddress(id);
+      if (res.success) {
+        setAddresses(prev => prev.filter(a => a.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete address:', err);
+    }
   };
 
-  const initials = profile.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
+  const initials = profile?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
+
+  if (loading || authLoading) {
+    return <div className="min-h-[60vh] flex items-center justify-center font-black uppercase tracking-widest text-gray-300">Loading your profile...</div>;
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="w-full max-w-[1440px] mx-auto px-5 md:px-10 py-16">
 
-      <div className="flex gap-10">
+      <div className="flex flex-col lg:flex-row gap-10">
         {/* Sidebar */}
-        <aside className="w-72 shrink-0">
+        <aside className="w-full lg:w-72 shrink-0">
           {/* Avatar */}
-          <div className="flex flex-col items-center pb-8 border-b border-gray-100 mb-6">
-            <div className="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-[3px_4px_0px_#555]">
+          <div className="flex flex-col items-center pb-8 border-b border-gray-100 mb-6 font-sans">
+            <div className="w-20 h-20 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-black mb-4 shadow-[4px_6px_0px_#555]">
               {initials}
             </div>
-            <h3 className="font-bold text-lg tracking-tight">{profile.full_name}</h3>
-            <p className="text-gray-400 text-sm mt-1">{profile.email}</p>
+            <h3 className="font-black text-xl tracking-tighter uppercase">{profile?.name || 'User'}</h3>
+            <p className="text-gray-400 text-xs mt-1 font-bold uppercase tracking-widest">{profile?.email}</p>
           </div>
 
           {/* Nav */}
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-2">
             {TABS.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left cursor-pointer
+                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all text-left cursor-pointer border-2
                     ${activeTab === tab.id
-                      ? 'bg-primary text-white shadow-[2px_3px_0px_#555]'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-primary'
+                      ? 'bg-primary text-white border-primary shadow-[4px_4px_0px_#555]'
+                      : 'text-gray-400 border-transparent hover:border-primary hover:text-primary'
                     }`}
                 >
-                  <Icon size={17} />
+                  <Icon size={18} />
                   {tab.label}
                   {activeTab === tab.id && <ChevronRight size={14} className="ml-auto" />}
                 </button>
               );
             })}
-            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-50 transition-all text-left cursor-pointer mt-4">
-              <LogOut size={17} /> Logout
+            <button 
+              onClick={() => { handleLogout(); navigate('/'); }}
+              className="flex items-center gap-4 px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-50 border-2 border-transparent hover:border-red-100 transition-all text-left cursor-pointer mt-6"
+            >
+              <LogOut size={18} /> Logout
             </button>
           </nav>
         </aside>
@@ -128,33 +159,34 @@ const ProfilePage = () => {
           <AnimatePresence mode="wait">
             {/* ─── Profile Settings ─── */}
             {activeTab === 'profile' && (
-              <motion.div key="profile" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <h2 className="text-2xl font-bold tracking-tight mb-8">Profile Settings</h2>
-                <div className="flex flex-col gap-6 max-w-xl">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Full Name</label>
-                      <input type="text" value={profile.full_name}
-                        onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))}
-                        className="border-2 border-gray-200 rounded-xl px-4 py-3 font-sans outline-none focus:border-primary transition-colors text-sm" />
+              <motion.div key="profile" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <h2 className="text-3xl font-black tracking-tighter uppercase mb-10">Profile Settings</h2>
+                <div className="flex flex-col gap-8 max-w-2xl bg-gray-50/50 p-8 rounded-3xl border-2 border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Full Name</label>
+                      <input type="text" value={profile?.name || ''}
+                        onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
+                        className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-sans outline-none focus:border-primary transition-colors text-sm font-bold shadow-sm" />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Phone</label>
-                      <input type="tel" value={profile.phone}
+                    <div className="flex flex-col gap-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Phone Number</label>
+                      <input type="tel" value={profile?.phone || ''}
                         onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
                         placeholder="+91 98765 43210"
-                        className="border-2 border-gray-200 rounded-xl px-4 py-3 font-sans outline-none focus:border-primary transition-colors text-sm" />
+                        className="bg-white border-2 border-gray-100 rounded-2xl px-5 py-4 font-sans outline-none focus:border-primary transition-colors text-sm font-bold shadow-sm" />
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <input type="email" value={profile.email} disabled
-                      className="border-2 border-gray-100 rounded-xl px-4 py-3 font-sans bg-gray-50 text-gray-400 text-sm cursor-not-allowed" />
+                  <div className="flex flex-col gap-3">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Email Address</label>
+                    <input type="email" value={profile?.email || ''} disabled
+                      className="bg-gray-100 border-2 border-gray-100 rounded-2xl px-5 py-4 font-sans text-gray-400 text-sm font-bold cursor-not-allowed" />
+                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest pl-2">Email cannot be changed for security</p>
                   </div>
                   <button onClick={handleSaveProfile} disabled={saving}
-                    className={`w-fit flex items-center gap-2 px-8 py-3 rounded-xl font-semibold text-sm transition-all cursor-pointer border-2
-                      ${saved ? 'bg-green-500 text-white border-green-500' : 'bg-primary text-white border-primary shadow-[2px_3px_0px_#111] hover:-translate-y-0.5'}`}>
-                    {saved ? <><Check size={16} /> Saved!</> : saving ? 'Saving...' : 'Save Changes'}
+                    className={`w-fit flex items-center gap-3 px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all cursor-pointer border-2
+                      ${saved ? 'bg-green-500 text-white border-green-500' : 'bg-primary text-white border-primary shadow-[4px_6px_0px_#111] hover:-translate-y-1'}`}>
+                    {saved ? <><Check size={18} /> Profile Updated</> : saving ? 'Updating...' : 'Save Changes'}
                   </button>
                 </div>
               </motion.div>
@@ -162,32 +194,38 @@ const ProfilePage = () => {
 
             {/* ─── Orders ─── */}
             {activeTab === 'orders' && (
-              <motion.div key="orders" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <h2 className="text-2xl font-bold tracking-tight mb-8">Order History</h2>
+              <motion.div key="orders" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <h2 className="text-3xl font-black tracking-tighter uppercase mb-10">Order History</h2>
                 {orders.length === 0 ? (
-                  <div className="text-center py-20 text-gray-400">
-                    <Package size={48} className="mx-auto mb-4 opacity-30" />
-                    <p>No orders yet. Start shopping!</p>
+                  <div className="text-center py-24 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                    <ShoppingBag size={48} className="mx-auto mb-4 text-gray-200" />
+                    <p className="text-gray-400 font-black uppercase tracking-widest text-xs">No orders found yet</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-6">
                     {orders.map(order => (
-                      <div key={order.id} className="border-2 border-gray-100 rounded-2xl p-5 hover:border-gray-200 transition-colors">
-                        <div className="flex items-center justify-between mb-4">
+                      <div key={order.id} className="bg-white border-2 border-gray-100 rounded-3xl p-6 hover:border-primary transition-colors shadow-sm group">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-gray-50 pb-6">
                           <div>
-                            <p className="font-bold text-sm">{order.id}</p>
-                            <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                            <p className="font-black text-sm tracking-tight uppercase">Order #{order.id.slice(-8)}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-1">{new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <p className="font-bold">{fmt(order.total)}</p>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Amount</p>
+                              <p className="font-black text-lg">{fmt(order.total)}</p>
+                            </div>
                             <StatusBadge status={order.status} />
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-6">
                           {order.order_items?.map((item, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <img src={item.products?.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                              <span className="text-xs text-gray-600">{item.products?.name} × {item.quantity}</span>
+                            <div key={i} className="flex items-center gap-4 bg-gray-50 pr-4 rounded-xl overflow-hidden border border-gray-100">
+                              <img src={item.products?.image_url} alt="" className="w-16 h-16 object-cover" />
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-tight">{item.products?.name}</p>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Qty: {item.quantity}</p>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -200,24 +238,27 @@ const ProfilePage = () => {
 
             {/* ─── Addresses ─── */}
             {activeTab === 'addresses' && (
-              <motion.div key="addresses" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight">Address Book</h2>
+              <motion.div key="addresses" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <div className="flex items-center justify-between mb-10">
+                  <h2 className="text-3xl font-black tracking-tighter uppercase">Address Book</h2>
                   <button onClick={() => setShowAddressForm(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm border-2 border-primary shadow-[2px_3px_0px_#111] hover:-translate-y-0.5 transition-all cursor-pointer">
-                    <Plus size={16} /> Add Address
+                    className="flex items-center gap-3 px-6 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-primary shadow-[4px_6px_0px_#111] hover:-translate-y-1 transition-all cursor-pointer">
+                    <Plus size={16} /> New Address
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {addresses.map(addr => (
-                    <div key={addr.id} className={`border-2 rounded-2xl p-5 relative ${addr.is_default ? 'border-primary' : 'border-gray-100'}`}>
-                      {addr.is_default && <span className="absolute top-4 right-4 text-xs font-semibold bg-neon text-primary px-2 py-0.5 rounded-full">Default</span>}
-                      <p className="font-bold mb-1">{addr.full_name}</p>
-                      <p className="text-sm text-gray-500 leading-relaxed">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}<br />{addr.city}, {addr.state} – {addr.pincode}</p>
-                      <p className="text-sm text-gray-500 mt-1">{addr.phone}</p>
-                      <div className="flex gap-2 mt-4">
-                        <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors cursor-pointer"><Edit2 size={13} /> Edit</button>
-                        <button onClick={() => handleDeleteAddress(addr.id)} className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 size={13} /> Delete</button>
+                    <div key={addr.id} className={`bg-white border-2 rounded-3xl p-8 relative shadow-sm transition-all ${addr.is_default ? 'border-primary' : 'border-gray-100 hover:border-gray-200'}`}>
+                      {addr.is_default && <span className="absolute top-6 right-6 text-[9px] font-black bg-neon text-primary px-3 py-1 rounded-full uppercase tracking-widest">Default Address</span>}
+                      <p className="font-black text-base uppercase mb-3 pr-20">{addr.full_name}</p>
+                      <p className="text-sm font-medium text-gray-500 leading-relaxed mb-4">{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}<br />{addr.city}, {addr.state} – {addr.pincode}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-400 font-bold mb-6 uppercase tracking-widest">
+                         <span className="text-primary font-black">MOBILE:</span> {addr.phone}
+                      </div>
+                      <div className="flex gap-4 pt-4 border-t border-gray-50">
+                        <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors cursor-pointer"><Edit2 size={13} /> Edit</button>
+                        <button onClick={() => handleDeleteAddress(addr.id)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors cursor-pointer"><Trash2 size={13} /> Remove</button>
                       </div>
                     </div>
                   ))}
@@ -225,55 +266,66 @@ const ProfilePage = () => {
 
                 {/* Add Address Form */}
                 {showAddressForm && (
-                  <div className="mt-6 border-2 border-dashed border-gray-200 rounded-2xl p-6">
-                    <h3 className="font-bold mb-5">New Address</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    className="mt-10 bg-gray-50 rounded-3xl p-8 border-2 border-dashed border-gray-300">
+                    <h3 className="text-xl font-black uppercase tracking-tighter mb-8">Add New Address</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {['full_name', 'phone', 'line1', 'line2', 'city', 'state', 'pincode'].map(field => (
-                        <div key={field} className={`flex flex-col gap-1.5 ${field === 'line1' ? 'col-span-2' : ''}`}>
-                          <label className="text-xs font-medium capitalize">{field.replace('_', ' ')}</label>
+                        <div key={field} className={`flex flex-col gap-2 ${field === 'line1' || field === 'line2' ? 'md:col-span-2' : ''}`}>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 pl-1">{field.replace('_', ' ')}</label>
                           <input type="text" value={newAddress[field]}
+                            placeholder={`Enter ${field.replace('_', ' ')}`}
                             onChange={e => setNewAddress(p => ({ ...p, [field]: e.target.value }))}
-                            className="border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors" />
+                            className="bg-white border-2 border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-primary transition-colors shadow-sm" />
                         </div>
                       ))}
                     </div>
-                    <div className="flex gap-3 mt-5">
+                    <div className="flex gap-4 mt-10">
                       <button onClick={handleAddAddress}
-                        className="px-6 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm border-2 border-primary shadow-[2px_3px_0px_#111] cursor-pointer">
+                        className="flex-1 md:flex-none px-10 py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-primary shadow-[4px_6px_0px_#111] hover:-translate-y-1 transition-all cursor-pointer">
                         Save Address
                       </button>
                       <button onClick={() => setShowAddressForm(false)}
-                        className="px-6 py-2.5 rounded-xl font-semibold text-sm border-2 border-gray-200 cursor-pointer hover:border-primary">
+                        className="flex-1 md:flex-none px-10 py-4 bg-white text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-gray-200 hover:border-primary hover:text-primary transition-all cursor-pointer">
                         Cancel
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
               </motion.div>
             )}
 
             {/* ─── Payment Methods ─── */}
             {activeTab === 'payments' && (
-              <motion.div key="payments" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <h2 className="text-2xl font-bold tracking-tight mb-8">Payment Methods</h2>
-                <div className="flex flex-col gap-4 max-w-lg">
-                  {payments.map(pm => (
-                    <div key={pm.id} className={`border-2 rounded-2xl p-5 flex items-center justify-between ${pm.is_default ? 'border-primary' : 'border-gray-100'}`}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-8 bg-gray-100 rounded-md flex items-center justify-center">
-                          <CreditCard size={18} className="text-gray-500" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm">{pm.brand} •••• {pm.last4}</p>
-                          <p className="text-xs text-gray-400">Expires {pm.exp_month}/{pm.exp_year}</p>
-                        </div>
-                      </div>
-                      {pm.is_default && <span className="text-xs font-semibold bg-neon text-primary px-2 py-0.5 rounded-full">Default</span>}
+              <motion.div key="payments" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+                <h2 className="text-3xl font-black tracking-tighter uppercase mb-10">Payment Methods</h2>
+                <div className="flex flex-col gap-4 max-w-xl">
+                  {payments.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 mb-6">
+                       <CreditCard size={32} className="mx-auto mb-3 text-gray-200" />
+                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">No saved cards found</p>
                     </div>
-                  ))}
-                  <div className="border-2 border-dashed border-gray-200 rounded-2xl p-5 flex items-center gap-3 text-gray-400 hover:border-primary hover:text-primary transition-colors cursor-pointer">
-                    <Plus size={20} />
-                    <span className="text-sm font-medium">Add Payment Method</span>
+                  ) : (
+                    payments.map(pm => (
+                      <div key={pm.id} className={`bg-white border-2 rounded-2xl p-6 flex items-center justify-between shadow-sm ${pm.is_default ? 'border-primary' : 'border-gray-100 hover:border-gray-200'}`}>
+                        <div className="flex items-center gap-5">
+                          <div className="w-14 h-10 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center">
+                            <CreditCard size={20} className="text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-black text-sm uppercase tracking-tight">{pm.brand} Card •••• {pm.last4}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Expires {pm.exp_month}/{pm.exp_year.toString().slice(-2)}</p>
+                          </div>
+                        </div>
+                        {pm.is_default && <span className="text-[9px] font-black bg-neon text-primary px-3 py-1 rounded-full uppercase tracking-widest">Default</span>}
+                      </div>
+                    ))
+                  )}
+                  <div className="border-4 border-dashed border-gray-100 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 text-gray-300 hover:border-primary hover:text-primary transition-all cursor-pointer group">
+                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-primary/5">
+                       <Plus size={24} />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest">Add New Payment Method</span>
                   </div>
                 </div>
               </motion.div>

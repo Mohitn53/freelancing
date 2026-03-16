@@ -1,10 +1,11 @@
 // Navbar.jsx – with working search, 3D buttons, cart count badge
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingCart, Heart, User, X } from 'lucide-react';
+import { Search, ShoppingCart, Heart, User, X, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { productsApi } from '../services/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -15,6 +16,7 @@ const Navbar = () => {
   const searchRef = useRef(null);
   const navigate = useNavigate();
   const { cartCount } = useCart();
+  const { user, handleLogout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -59,7 +61,7 @@ const Navbar = () => {
   };
 
   const MotionBtn = motion.button;
-  const MotionLink = motion(Link);
+  const MotionLink = motion.create(Link);
   const btnHover = { y: -2, x: -1, boxShadow: '3px 5px 0px #111' };
   const btnTap = { y: 2, x: 1, boxShadow: '0px 0px 0px #111' };
   const iconBtnClass = "relative flex items-center justify-center bg-white border-2 border-primary cursor-pointer p-2 rounded-xl text-primary transition-colors shadow-[2px_3px_0px_#111]";
@@ -75,8 +77,18 @@ const Navbar = () => {
               whileHover={{ y: -2 }} whileTap={{ y: 1 }}>
               Shop <span className="text-[10px] ml-1 mt-0.5">▾</span>
             </MotionLink>
-            <MotionLink to="/products" className="text-sm font-medium text-primary" whileHover={{ y: -2 }} whileTap={{ y: 1 }}>Collections</MotionLink>
             <MotionLink to="/about-contact" className="text-sm font-medium text-primary" whileHover={{ y: -2 }} whileTap={{ y: 1 }}>About & Contact</MotionLink>
+            
+            {user?.role === 'admin' && (
+              <MotionLink 
+                to="/admin" 
+                className="text-xs font-black uppercase tracking-widest bg-primary text-white px-4 py-1.5 rounded-full hover:shadow-lg transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Admin Panel
+              </MotionLink>
+            )}
           </div>
 
           {/* Center: Logo */}
@@ -107,10 +119,21 @@ const Navbar = () => {
               <Heart size={20} strokeWidth={1.5} />
             </MotionBtn>
 
-            {/* Profile */}
-            <MotionBtn className={iconBtnClass} whileHover={btnHover} whileTap={btnTap} onClick={() => navigate('/profile')}>
-              <User size={20} strokeWidth={1.5} />
-            </MotionBtn>
+            {/* Profile / Login */}
+            {user ? (
+              <>
+                <MotionBtn className={iconBtnClass} whileHover={btnHover} whileTap={btnTap} onClick={() => navigate('/profile')}>
+                  <User size={20} strokeWidth={1.5} />
+                </MotionBtn>
+                <MotionBtn className={iconBtnClass} whileHover={btnHover} whileTap={btnTap} onClick={() => { handleLogout(); navigate('/'); }}>
+                  <LogOut size={20} strokeWidth={1.5} />
+                </MotionBtn>
+              </>
+            ) : (
+              <MotionBtn className={iconBtnClass} whileHover={btnHover} whileTap={btnTap} onClick={() => navigate('/login')}>
+                <User size={20} strokeWidth={1.5} />
+              </MotionBtn>
+            )}
           </div>
         </div>
       </nav>

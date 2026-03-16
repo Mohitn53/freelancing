@@ -1,19 +1,46 @@
 // src/context/CartContext.jsx
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { cartApi } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [notification, setNotification] = useState(null); // { name, image }
+  const { token, loading: authLoading } = useAuth();
+
+  const fetchCart = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await cartApi.get();
+      if (res.success) {
+        // Map backend 'products' to 'product' for UI consistency
+        const mapped = (res.data || []).map(item => ({
+          ...item,
+          product: item.products
+        }));
+        setCartItems(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch cart:', err);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!authLoading && token) {
+      fetchCart();
+    } else if (!authLoading && !token) {
+      setCartItems([]);
+    }
+  }, [token, authLoading, fetchCart]);
 
   const showNotification = (product) => {
     setNotification(product);
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const addToCart = useCallback(async (product, size = 'M', qty = 1, isLocal = true) => {
+  const addToCart = useCallback(async (product, size = 'M', qty = 1) => {
     // Optimistic local update
     setCartItems(prev => {
       const existing = prev.find(i => i.product_id === product.id && i.size === size);
@@ -28,10 +55,12 @@ export const CartProvider = ({ children }) => {
     });
     showNotification(product);
 
-    if (!isLocal) {
-      try { await cartApi.add(product.id, qty, size); } catch {}
+    if (token) {
+      try { await cartApi.add(product.id, qty, size); } catch (err) {
+        console.error('Failed to add to backend cart:', err);
+      }
     }
-  }, []);
+  }, [token]);
 
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 

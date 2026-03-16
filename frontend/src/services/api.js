@@ -23,6 +23,17 @@ export const productsApi = {
     request(`/api/products?page=${page}&category=${category}&sort=${sort}`),
   get: (id) => request(`/api/products/${id}`),
   search: (q) => request(`/api/products/search?q=${encodeURIComponent(q)}`),
+  create: (body) => request('/api/products', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id, body) => request(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (id) => request(`/api/products/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+export const categoryApi = {
+  list: () => request('/api/categories'),
+  create: (body) => request('/api/categories', { method: 'POST', body: JSON.stringify(body) }),
+  update: (id, body) => request(`/api/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (id) => request(`/api/categories/${id}`, { method: 'DELETE' }),
 };
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
@@ -41,7 +52,24 @@ export const wishlistApi = {
   get: () => request('/api/wishlist'),
   add: (product_id) =>
     request('/api/wishlist', { method: 'POST', body: JSON.stringify({ product_id }) }),
-  remove: (productId) => request(`/api/wishlist/${productId}`, { method: 'DELETE' }),
+  remove: (id) => request(`/api/wishlist/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Orders ──────────────────────────────────────────────────────────────────
+export const orderApi = {
+  create: (body) => request('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
+  get: (id) => request(`/api/orders/${id}`),
+  listAdmin: () => request('/api/orders/admin'),
+  updateStatus: (id, status) => request(`/api/orders/${id}/status`, { 
+    method: 'PATCH', 
+    body: JSON.stringify({ status }) 
+  }),
+};
+
+// ─── Admin Specific ──────────────────────────────────────────────────────────
+export const adminApi = {
+  listUsers: () => request('/api/admin/users'),
+  getAnalytics: () => request('/api/admin/analytics'),
 };
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
