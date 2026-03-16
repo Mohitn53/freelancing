@@ -8,13 +8,6 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const FALLBACK = [
-  { id: 1, name: 'Core Hoodie', subtitle: 'Black / Grey', price: 7400, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80', description: 'Premium quality hoodie designed for maximum comfort and streetwear styling. Made from heavy cotton for a structured yet soft feel.' },
-  { id: 2, name: 'Essential Tank', subtitle: 'White / Black', price: 3200, image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80', description: 'Minimal essential tank – versatile and made from breathable fabrics for all-day wear.' },
-  { id: 3, name: 'Contrast Tee', subtitle: 'Black/White', price: 4900, image_url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80', description: 'Bold contrast tee with clean lines. Oversized fit.' },
-  { id: 4, name: 'Base Crop', subtitle: 'White', price: 4900, image_url: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&q=80', description: 'The foundation of your wardrobe. Clean, minimal, timeless.' },
-];
-
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const fmt = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
@@ -39,8 +32,7 @@ const ProductDetailsPage = () => {
         const res = await productsApi.get(id);
         setProduct(res.data);
       } catch {
-        const fallback = FALLBACK.find(p => p.id.toString() === id) || FALLBACK[0];
-        setProduct(fallback);
+        setProduct(null);
       }
       setLoading(false);
     };
@@ -92,6 +84,12 @@ const ProductDetailsPage = () => {
           <div className="h-24 bg-gray-100 rounded" />
         </div>
       </div>
+    </div>
+  );
+
+  if (!product) return (
+    <div className="w-full max-w-[1440px] mx-auto px-5 md:px-10 py-32 text-center text-gray-500 font-sans">
+      Product not found
     </div>
   );
 

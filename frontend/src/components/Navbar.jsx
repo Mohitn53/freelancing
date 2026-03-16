@@ -62,14 +62,7 @@ const Navbar = () => {
         const res = await productsApi.search(value);
         setSearchResults(res.data || []);
       } catch {
-        // fallback: filter dummy products
-        const DUMMY = [
-          { id: 1, name: 'Core Hoodie', price: 7400, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=100&q=80' },
-          { id: 2, name: 'Essential Tank', price: 3200, image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=100&q=80' },
-          { id: 3, name: 'Contrast Tee', price: 4900, image_url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=100&q=80' },
-          { id: 4, name: 'Base Crop', price: 4900, image_url: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=100&q=80' },
-        ];
-        setSearchResults(DUMMY.filter(p => p.name.toLowerCase().includes(value.toLowerCase())));
+        setSearchResults([]);
       }
       setSearchLoading(false);
     }, 300);

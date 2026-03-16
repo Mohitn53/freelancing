@@ -6,22 +6,6 @@ import { productsApi } from '../services/api';
 
 const CATEGORIES = ['All', 'Men', 'Women', 'Bags', 'Shoes', 'Accessories'];
 
-// ─── Fallback dummy products (shown when backend isn't seeded yet) ─────────────
-const DUMMY = [
-  { id: 1, name: 'Core Hoodie', subtitle: 'Black / Grey', price: 7400, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80' },
-  { id: 2, name: 'Essential Tank', subtitle: 'White / Black', price: 3200, image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80' },
-  { id: 3, name: 'Contrast Tee', subtitle: 'Black/White', price: 4900, image_url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80' },
-  { id: 4, name: 'Base Crop', subtitle: 'White', price: 4900, image_url: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&q=80' },
-  { id: 5, name: 'Urban Zip Hoodie', subtitle: 'Dark Navy', price: 5600, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80' },
-  { id: 6, name: 'Minimal Jogger', subtitle: 'Slate Grey', price: 4200, image_url: 'https://images.unsplash.com/photo-1624378441864-161bcf772b15?auto=format&fit=crop&q=80' },
-  { id: 7, name: 'Short Shirt Black', subtitle: 'Minimalist', price: 3800, image_url: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ce3?auto=format&fit=crop&q=80' },
-  { id: 8, name: 'Canvas Tote Grey', subtitle: 'Sun & Breeze', price: 2200, image_url: 'https://images.unsplash.com/photo-1597843793666-accc3c38b4c0?auto=format&fit=crop&q=80' },
-  { id: 9, name: 'Oversize Black Shirt', subtitle: 'Minimal Edition', price: 3500, image_url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80' },
-  { id: 10, name: 'Erigo Coach Jacket', subtitle: 'Sport Series', price: 8900, image_url: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&q=80' },
-  { id: 11, name: 'Streetwear Cap ', subtitle: 'Navy Blue', price: 1500, image_url: 'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?auto=format&fit=crop&q=80' },
-  { id: 12, name: 'Essential Trouser', subtitle: 'Dark Grey', price: 6200, image_url: 'https://images.unsplash.com/photo-1624378441864-161bcf772b15?auto=format&fit=crop&q=80' },
-];
-
 const ProductListingPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,20 +19,19 @@ const ProductListingPage = () => {
     setLoading(true);
     try {
       const res = await productsApi.list(page, category === 'All' ? '' : category, sort);
-      if (res.data && res.data.length > 0) {
+      if (res.data) {
         setProducts(res.data.map(p => ({ ...p, image: p.image_url })));
         setTotalPages(res.totalPages || 1);
         setTotal(res.total || res.data.length);
       } else {
-        // Use dummy data if backend has no products yet
-        setProducts(DUMMY);
+        setProducts([]);
         setTotalPages(1);
-        setTotal(DUMMY.length);
+        setTotal(0);
       }
     } catch {
-      setProducts(DUMMY);
+      setProducts([]);
       setTotalPages(1);
-      setTotal(DUMMY.length);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -107,7 +90,7 @@ const ProductListingPage = () => {
             </div>
           ))}
         </div>
-      ) : (
+      ) : products.length > 0 ? (
         <AnimatePresence mode="wait">
           <motion.div
             key={`${category}-${page}`}
@@ -129,6 +112,10 @@ const ProductListingPage = () => {
             ))}
           </motion.div>
         </AnimatePresence>
+      ) : (
+        <div className="py-20 text-center text-gray-500 font-sans">
+          No products found for this category.
+        </div>
       )}
 
       {/* Pagination */}
