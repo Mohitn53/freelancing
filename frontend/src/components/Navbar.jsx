@@ -7,6 +7,9 @@ import { productsApi } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+const MotionBtn = motion.button;
+const MotionLink = motion(Link);
+
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -14,6 +17,7 @@ const Navbar = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchRef = useRef(null);
+  const searchTimerRef = useRef(null);
   const navigate = useNavigate();
   const { cartCount } = useCart();
   const { user, handleLogout } = useAuth();
@@ -31,13 +35,31 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Debounced search
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2) { setSearchResults([]); return; }
-    const t = setTimeout(async () => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
+    if (!value || value.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    searchTimerRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await productsApi.search(searchQuery);
+        const res = await productsApi.search(value);
         setSearchResults(res.data || []);
       } catch {
         // fallback: filter dummy products
@@ -47,21 +69,19 @@ const Navbar = () => {
           { id: 3, name: 'Contrast Tee', price: 4900, image_url: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=100&q=80' },
           { id: 4, name: 'Base Crop', price: 4900, image_url: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=100&q=80' },
         ];
-        setSearchResults(DUMMY.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())));
+        setSearchResults(DUMMY.filter(p => p.name.toLowerCase().includes(value.toLowerCase())));
       }
       setSearchLoading(false);
     }, 300);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
+  };
 
   const handleResultClick = (id) => {
     setSearchOpen(false);
     setSearchQuery('');
+    setSearchResults([]);
     navigate(`/products/${id}`);
   };
 
-  const MotionBtn = motion.button;
-  const MotionLink = motion.create(Link);
   const btnHover = { y: -2, x: -1, boxShadow: '3px 5px 0px #111' };
   const btnTap = { y: 2, x: 1, boxShadow: '0px 0px 0px #111' };
   const iconBtnClass = "relative flex items-center justify-center bg-white border-2 border-primary cursor-pointer p-2 rounded-xl text-primary transition-colors shadow-[2px_3px_0px_#111]";
@@ -161,7 +181,7 @@ const Navbar = () => {
                   id="search-input"
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => handleSearchChange(e.target.value)}
                   placeholder="Search for hoodies, tees, joggers..."
                   className="flex-1 text-base outline-none font-sans placeholder:text-gray-300"
                 />
@@ -196,8 +216,8 @@ const Navbar = () => {
                 <div className="px-6 py-4">
                   <p className="text-xs text-gray-300 mb-3 font-medium">POPULAR SEARCHES</p>
                   <div className="flex flex-wrap gap-2">
-                    {['Hoodie', 'Tee', 'Jogger', 'Minimal', 'Oversized'].map(tag => (
-                      <button key={tag} onClick={() => setSearchQuery(tag)}
+                    {['Hoodie', 'Tee', 'Jogger', 'Minimal', 'Oversized'].map((tag) => (
+                      <button key={tag} onClick={() => handleSearchChange(tag)}
                         className="px-4 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600 hover:bg-primary hover:text-white transition-colors cursor-pointer">
                         {tag}
                       </button>

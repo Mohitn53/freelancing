@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { authApi } from '../services/api';
 
 const SignupPage = () => {
   const [name, setName] = useState('');
@@ -19,21 +20,10 @@ const SignupPage = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const json = await response.json();
-
-      if (json.success) {
-        navigate('/login');
-      } else {
-        setError(json.message || 'Signup failed. Please try again.');
-      }
+      await authApi.signup({ name, email, password });
+      navigate('/login');
     } catch (err) {
-      setError('Something went wrong. Please try again later.');
+      setError(err.message || 'Something went wrong. Please try again later.');
     } finally {
       setLoading(false);
     }

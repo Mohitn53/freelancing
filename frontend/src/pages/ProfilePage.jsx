@@ -53,9 +53,9 @@ const ProfilePage = () => {
         ]);
 
         if (profRes.success) setProfile(profRes.data);
-        if (ordRes.success) setOrders(ordRes.data);
-        if (addrRes.success) setAddresses(ordRes.data);
-        if (payRes.success) setPayments(payRes.data);
+        if (ordRes.success) setOrders(ordRes.data || []);
+        if (addrRes.success) setAddresses(addrRes.data || []);
+        if (payRes.success) setPayments(payRes.data || []);
       } catch (err) {
         console.error('Failed to fetch profile data:', err);
       } finally {
@@ -64,7 +64,7 @@ const ProfilePage = () => {
     };
 
     fetchData();
-  }, [token, authLoading]);
+  }, [token, authLoading, navigate]);
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -213,7 +213,7 @@ const ProfilePage = () => {
                           <div className="flex items-center gap-6">
                             <div className="text-right">
                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Amount</p>
-                              <p className="font-black text-lg">{fmt(order.total)}</p>
+                              <p className="font-black text-lg">{fmt(order.total_amount || order.total || 0)}</p>
                             </div>
                             <StatusBadge status={order.status} />
                           </div>

@@ -10,32 +10,102 @@ router.use(verifyToken);
 // Create order (Checkout)
 router.post('/', async (req, res) => {
   try {
-    const { items, total_amount, shipping_address_id, payment_method_id } = req.body;
+    const { items = [], total_amount, total, amount } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order must include at least one item.',
+      });
+    }
+
+    const normalizedTotal = Number(total_amount ?? total ?? amount);
+    if (Number.isNaN(normalizedTotal) || normalizedTotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid total amount.',
+      });
+    }
+
+    const normalizedItems = items
+      .map((item) => ({
+        product_id: item.product_id,
+        quantity: Number(item.quantity),
+        price: Number(item.price),
+      }))
+      .filter((item) => item.product_id && !Number.isNaN(item.quantity) && item.quantity > 0);
+
+    if (!normalizedItems.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order items payload.',
+      });
+    }
+
+    const isMissingColumnError = (errMessage, tableName) => {
+      const msg = String(errMessage || '').toLowerCase();
+      return msg.includes('could not find') && msg.includes(`column of '${tableName}'`);
+    };
     
     // 1. Create Order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([{ 
-        user_id: req.user.id, 
-        total_amount, 
-        shipping_address_id, 
-        payment_method_id,
-        status: 'pending'
-      }])
-      .select().single();
+    const orderPayloads = [
+      { user_id: req.user.id, total_amount: normalizedTotal, status: 'pending' },
+      { user_id: req.user.id, total: normalizedTotal, status: 'pending' },
+      { user_id: req.user.id, amount: normalizedTotal, status: 'pending' },
+    ];
 
-    if (orderError) throw orderError;
+    let order = null;
+    let orderError = null;
+
+    for (const payload of orderPayloads) {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (!error) {
+        order = data;
+        orderError = null;
+        break;
+      }
+
+      orderError = error;
+      if (!isMissingColumnError(error.message, 'orders')) {
+        break;
+      }
+    }
+
+    if (orderError || !order) throw orderError || new Error('Failed to create order.');
 
     // 2. Create Order Items
-    const orderItems = items.map(item => ({
+    const orderItemsBase = normalizedItems.map(item => ({
       order_id: order.id,
       product_id: item.product_id,
       quantity: item.quantity,
-      price: item.price,
-      size: item.size
+      price: item.price
     }));
 
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
+    const orderItemsPayloads = [
+      orderItemsBase,
+      orderItemsBase.map(({ price, ...rest }) => ({ ...rest, unit_price: price })),
+      orderItemsBase.map(({ price, ...rest }) => ({ ...rest, amount: price })),
+      orderItemsBase.map(({ price, ...rest }) => ({ ...rest })),
+    ];
+
+    let itemsError = null;
+    for (const payload of orderItemsPayloads) {
+      const { error } = await supabase.from('order_items').insert(payload);
+      if (!error) {
+        itemsError = null;
+        break;
+      }
+      itemsError = error;
+      if (!isMissingColumnError(error.message, 'order_items')) {
+        break;
+      }
+    }
+
     if (itemsError) throw itemsError;
 
     // 3. Clear Cart

@@ -8,6 +8,7 @@
  */
 
 import supabase from '../config/supabaseClient.js';
+import supabaseAuth from '../config/supabaseAuthClient.js';
 
 // ─── Sign Up ──────────────────────────────────────────────────────────────────
 /**
@@ -56,7 +57,7 @@ export const signUpUser = async (email, password, name) => {
  * @returns {{ user, session }}
  */
 export const signInUser = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({
     email,
     password,
   });

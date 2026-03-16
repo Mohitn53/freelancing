@@ -20,6 +20,21 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+-- Helper function for admin checks used in RLS policies.
+-- SECURITY DEFINER avoids recursive policy evaluation when checking `profiles`.
+CREATE OR REPLACE FUNCTION public.is_admin_user(user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = user_id AND role = 'admin'
+  );
+$$;
+
 -- Users can read/update their own profile
 CREATE POLICY "Users read own profile"
   ON profiles FOR SELECT
@@ -32,12 +47,7 @@ CREATE POLICY "Users update own profile"
 -- Admins can do everything
 CREATE POLICY "Admins full access on profiles"
   ON profiles FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid() AND p.role = 'admin'
-    )
-  );
+  USING (public.is_admin_user(auth.uid()));
 
 -- ─── projects ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projects (
@@ -61,12 +71,7 @@ CREATE POLICY "Owners manage own projects"
 -- Admins can manage all projects
 CREATE POLICY "Admins full access on projects"
   ON projects FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid() AND p.role = 'admin'
-    )
-  );
+  USING (public.is_admin_user(auth.uid()));
 
 -- ─── Auto-update updated_at ───────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at_column()

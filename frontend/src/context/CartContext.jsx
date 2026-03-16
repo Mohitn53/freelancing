@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // src/context/CartContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { cartApi } from '../services/api';
@@ -28,11 +29,17 @@ export const CartProvider = ({ children }) => {
   }, [token]);
 
   useEffect(() => {
-    if (!authLoading && token) {
-      fetchCart();
-    } else if (!authLoading && !token) {
-      setCartItems([]);
-    }
+    if (authLoading) return;
+
+    const timer = setTimeout(() => {
+      if (token) {
+        fetchCart();
+      } else {
+        setCartItems([]);
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [token, authLoading, fetchCart]);
 
   const showNotification = (product) => {

@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { wishlistApi } from '../services/api';
 
-const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: initWished = false }) => {
+const ProductCard = ({ id, image, name, subtitle, price, isWished: initWished = false }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isWished, setIsWished] = useState(initWished);
   const [added, setAdded] = useState(false);
@@ -46,7 +46,7 @@ const ProductCard = ({ id, image, name, subtitle, price, oldPrice, isWished: ini
       if (nextState) {
         await wishlistApi.add(id);
       } else {
-        await wishlistApi.delete(id);
+        await wishlistApi.remove(id);
       }
     } catch (err) {
       console.error('Wishlist sync failed:', err);

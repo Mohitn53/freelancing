@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 const fmt = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
 
 const CartPage = () => {
-  const { cartItems, setCartItems, addToCart } = useCart();
+  const { cartItems, setCartItems } = useCart();
   const { token, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -71,7 +71,7 @@ const CartPage = () => {
         {/* List */}
         <div className="space-y-8">
           <AnimatePresence>
-            {cartItems.map((item, idx) => (
+            {cartItems.map((item) => (
               <motion.div 
                 key={`${item.product_id}-${item.size}`}
                 initial={{ opacity: 0, y: 20 }}

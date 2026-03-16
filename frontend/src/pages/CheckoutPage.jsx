@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { CreditCard, Truck, ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { orderApi } from '../services/api';
 
 const fmt = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
 
@@ -13,18 +14,48 @@ const CheckoutPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [placed, setPlaced] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [orderError, setOrderError] = useState('');
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.product?.price || 0) * item.quantity, 0);
   const tax = subtotal * 0.18;
   const total = subtotal + tax;
 
-  const handlePlaceOrder = () => {
-    setPlaced(true);
-    // Clear cart after a delay
-    setTimeout(() => {
-      setCartItems([]);
-      navigate('/profile');
-    }, 3000);
+  const handlePlaceOrder = async () => {
+    if (!cartItems.length) return;
+
+    setPlacingOrder(true);
+    setOrderError('');
+
+    try {
+      const items = cartItems
+        .map((item) => ({
+          product_id: item.product_id || item.product?.id,
+          quantity: item.quantity,
+          price: item.product?.price || item.price || 0,
+          size: item.size || 'M',
+        }))
+        .filter((item) => item.product_id);
+
+      if (!items.length) {
+        throw new Error('Your cart is invalid. Please refresh and try again.');
+      }
+
+      await orderApi.create({
+        items,
+        total_amount: total,
+      });
+
+      setPlaced(true);
+      setTimeout(() => {
+        setCartItems([]);
+        navigate('/profile');
+      }, 3000);
+    } catch (err) {
+      setOrderError(err.message || 'Failed to place order. Please try again.');
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   if (placed) {
@@ -69,7 +100,7 @@ const CheckoutPage = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="text" placeholder="Full Name" defaultValue={user?.full_name} className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 outline-none focus:border-primary transition-colors" />
+              <input type="text" placeholder="Full Name" defaultValue={user?.name} className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 outline-none focus:border-primary transition-colors" />
               <input type="email" placeholder="Email Address" defaultValue={user?.email} className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 outline-none focus:border-primary transition-colors" />
               <input type="text" placeholder="Phone Number" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 outline-none focus:border-primary transition-colors md:col-span-2" />
               <input type="text" placeholder="Address Line 1" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-5 py-4 outline-none focus:border-primary transition-colors md:col-span-2" />
@@ -154,10 +185,16 @@ const CheckoutPage = () => {
 
             <button 
               onClick={handlePlaceOrder}
-              className="w-full bg-primary text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm mt-10 hover:bg-neon hover:text-primary transition-all shadow-[0_10px_30px_rgba(0,0,0,0.1)] flex items-center justify-center gap-3"
+              disabled={placingOrder || cartItems.length === 0}
+              className="w-full bg-primary text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm mt-10 hover:bg-neon hover:text-primary transition-all shadow-[0_10px_30px_rgba(0,0,0,0.1)] flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <ShieldCheck size={20} /> Complete Payment
+              <ShieldCheck size={20} /> {placingOrder ? 'Placing Order...' : 'Complete Payment'}
             </button>
+            {orderError && (
+              <p className="text-[10px] text-red-500 text-center mt-3 font-bold uppercase tracking-wider">
+                {orderError}
+              </p>
+            )}
             <p className="text-[9px] text-gray-400 text-center mt-4 uppercase font-bold tracking-widest">
               By placing order you agree to our terms & conditions
             </p>

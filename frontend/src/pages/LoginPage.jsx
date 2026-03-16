@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { authApi } from '../services/api';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -20,22 +21,11 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const json = await response.json();
-
-      if (json.success) {
-        handleLogin(json.data.accessToken, json.data.user);
-        navigate('/profile');
-      } else {
-        setError(json.message || 'Login failed. Please check your credentials.');
-      }
+      const json = await authApi.login({ email, password });
+      handleLogin(json.data.accessToken, json.data.user);
+      navigate('/profile');
     } catch (err) {
-      setError('Something went wrong. Please try again later.');
+      setError(err.message || 'Something went wrong. Please try again later.');
     } finally {
       setLoading(false);
     }

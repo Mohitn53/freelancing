@@ -6,8 +6,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import jwt from 'jsonwebtoken';
 import supabase from '../config/supabaseClient.js';
+import supabaseAuth from '../config/supabaseAuthClient.js';
 
 // ─── 1. JWT Verification ──────────────────────────────────────────────────────
 /**
@@ -30,24 +30,22 @@ export const verifyToken = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify token using official Supabase Auth API
-    // This is more reliable than manual JWT verification
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error,
+    } = await supabaseAuth.auth.getUser(token);
 
     if (error || !user) {
-      console.error('Supabase auth error:', error?.message);
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired token.',
       });
     }
 
-    // Attach user to request. Map user.id to req.user.id and req.user.sub
-    // to maintain compatibility with existing controllers.
     req.user = {
       ...user,
       id: user.id,
-      sub: user.id
+      sub: user.id,
     };
 
     next();

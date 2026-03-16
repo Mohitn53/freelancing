@@ -17,6 +17,14 @@ async function request(path, options = {}) {
   return json;
 }
 
+// ─── Auth ────────────────────────────────────────────────────────────────────
+export const authApi = {
+  signup: (body) => request('/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
+  login: (body) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  me: () => request('/auth/me'),
+};
+
 // ─── Products ──────────────────────────────────────────────────────────────────
 export const productsApi = {
   list: (page = 1, category = '', sort = 'created_at') =>

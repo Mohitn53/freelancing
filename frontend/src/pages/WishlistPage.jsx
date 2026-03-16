@@ -4,14 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
 import { wishlistApi } from '../services/api';
 import { Heart, ShoppingBag } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const WishlistPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const { token, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (authLoading) return;
