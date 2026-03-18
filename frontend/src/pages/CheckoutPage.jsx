@@ -16,6 +16,7 @@ const CheckoutPage = () => {
   const [placed, setPlaced] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [orderError, setOrderError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
 
   const subtotal = cartItems.reduce((acc, item) => acc + (item.product?.price || 0) * item.quantity, 0);
   const tax = subtotal * 0.18;
@@ -44,6 +45,7 @@ const CheckoutPage = () => {
       await orderApi.create({
         items,
         total_amount: total,
+        payment_method: paymentMethod,
       });
 
       setPlaced(true);
@@ -119,8 +121,11 @@ const CheckoutPage = () => {
             </div>
             
             <div className="space-y-3">
-              <label className="flex items-center gap-4 p-5 border-2 border-primary bg-primary/5 rounded-2xl cursor-pointer">
-                <input type="radio" name="payment" defaultChecked className="w-4 h-4 accent-primary" />
+              <label 
+                className={`flex items-center gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+                onClick={() => setPaymentMethod('card')}
+              >
+                <input type="radio" name="payment" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="w-4 h-4 accent-primary cursor-pointer" />
                 <div className="flex-1">
                   <p className="font-bold text-sm tracking-tight">Credit / Debit Card</p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Visa, Mastercard, AMEX</p>
@@ -131,11 +136,25 @@ const CheckoutPage = () => {
                 </div>
               </label>
               
-              <label className="flex items-center gap-4 p-5 border-2 border-gray-100 rounded-2xl cursor-pointer hover:border-gray-200 transition-colors">
-                <input type="radio" name="payment" className="w-4 h-4 accent-primary" />
+              <label 
+                className={`flex items-center gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-colors ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+                onClick={() => setPaymentMethod('wallet')}
+              >
+                <input type="radio" name="payment" checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} className="w-4 h-4 accent-primary cursor-pointer" />
                 <div className="flex-1">
                   <p className="font-bold text-sm tracking-tight">External Wallet</p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Paytm, Google Pay, PhonePe</p>
+                </div>
+              </label>
+
+              <label 
+                className={`flex items-center gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+                onClick={() => setPaymentMethod('cod')}
+              >
+                <input type="radio" name="payment" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="w-4 h-4 accent-primary cursor-pointer" />
+                <div className="flex-1">
+                  <p className="font-bold text-sm tracking-tight">Cash on Delivery (COD)</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Pay when you receive</p>
                 </div>
               </label>
             </div>

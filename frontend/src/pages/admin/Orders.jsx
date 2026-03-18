@@ -147,7 +147,7 @@ const AdminOrders = () => {
                                 </span>
                             </td>
                             <td className="px-10 py-8 font-black text-sm">
-                                ₹{order.total_amount.toLocaleString('en-IN')}
+                                ₹{Number(order.total || order.total_amount || 0).toLocaleString('en-IN')}
                             </td>
                             <td className="px-10 py-8">
                                 <select 
