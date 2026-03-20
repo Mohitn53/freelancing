@@ -3,13 +3,30 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
 import ProductCard from '../components/ProductCard';
-import { productsApi } from '../services/api';
+import { productsApi, categoryApi } from '../services/api';
 
 const HomePage = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(['All']);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await categoryApi.list();
+        if (res.success && res.data) {
+          const catNames = res.data.map(c => c.name);
+          setCategories(['All', ...catNames]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setCategories(['All', 'Men', 'Women', 'Bags', 'Shoes']); // fallback
+      }
+    };
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const fetchNewArrivals = async () => {
@@ -43,8 +60,8 @@ const HomePage = () => {
           <h2 className="text-4xl font-black tracking-tighter m-0 font-sans text-primary uppercase">New Arrivals</h2>
           
           <div className="flex items-center bg-[#f5f5f5] rounded-full p-1 border border-gray-100 shadow-sm overflow-x-auto max-w-full">
-            {['All', 'Men', 'Women', 'Bags', 'Shoes'].map((cat) => (
-              <button 
+            {categories.map((cat) => (
+              <button
                 key={cat}
                 onClick={() => setActiveTab(cat)}
                 className={`px-6 py-2 text-sm font-medium transition-all outline-none border-none bg-none cursor-pointer rounded-full font-sans whitespace-nowrap

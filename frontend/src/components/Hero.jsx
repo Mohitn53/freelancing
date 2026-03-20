@@ -29,7 +29,7 @@ const Hero = () => {
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         >
           <p className="text-white text-xs md:text-sm font-black uppercase tracking-[0.5em] mb-4 bg-primary px-4 py-2 rounded-full inline-block">
-            Fall / Winter 2026
+            Fall / Winter / Summer 2026
           </p>
           <h1 className="text-[clamp(60px,12vw,160px)] font-black leading-[0.8] tracking-tighter text-white uppercase drop-shadow-2xl">
             Timeless<br />

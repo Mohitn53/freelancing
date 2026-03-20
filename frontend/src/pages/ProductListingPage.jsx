@@ -2,18 +2,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from '../components/ProductCard';
-import { productsApi } from '../services/api';
-
-const CATEGORIES = ['All', 'Men', 'Women', 'Bags', 'Shoes', 'Accessories'];
+import { productsApi, categoryApi } from '../services/api';
 
 const ProductListingPage = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState(['All']);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [category, setCategory] = useState('All');
   const [sort, setSort] = useState('created_at');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await categoryApi.list();
+        if (res.success && res.data) {
+          const catNames = res.data.map(c => c.name);
+          setCategories(['All', ...catNames]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setCategories(['All', 'Men', 'Women', 'Bags', 'Shoes', 'Accessories']); // fallback
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -64,7 +79,7 @@ const ProductListingPage = () => {
 
       {/* Category Filters */}
       <div className="flex items-center gap-2 flex-wrap mb-8">
-        {CATEGORIES.map(cat => (
+        {categories.map(cat => (
           <button
             key={cat}
             onClick={() => { setCategory(cat); setPage(1); }}

@@ -68,10 +68,11 @@ export const orderApi = {
   create: (body) => request('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
   get: (id) => request(`/api/orders/${id}`),
   listAdmin: () => request('/api/orders/admin'),
-  updateStatus: (id, status) => request(`/api/orders/${id}/status`, { 
-    method: 'PATCH', 
-    body: JSON.stringify({ status }) 
+  updateStatus: (id, status) => request(`/api/orders/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
   }),
+  cancel: (id) => request(`/api/orders/${id}/cancel`, { method: 'PATCH' }),
 };
 
 // ─── Admin Specific ──────────────────────────────────────────────────────────

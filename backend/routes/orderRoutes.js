@@ -160,6 +160,34 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Cancel order (User Only)
+router.patch('/:id/cancel', async (req, res) => {
+  try {
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, status, user_id')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError || !order) return res.status(404).json({ success: false, message: 'Order not found.' });
+    if (order.user_id !== req.user.id) return res.status(403).json({ success: false, message: 'Access denied.' });
+    if (order.status === 'delivered') return res.status(400).json({ success: false, message: 'Cannot cancel a delivered order.' });
+    if (order.status === 'cancelled') return res.status(400).json({ success: false, message: 'Order is already cancelled.' });
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Update order status (Admin Only)
 router.patch('/:id/status', requireRole('admin'), async (req, res) => {
   try {

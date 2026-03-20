@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Package, MapPin, CreditCard, LogOut, ChevronRight, Plus, Check, Edit2, Trash2, ShoppingBag } from 'lucide-react';
-import { profileApi } from '../services/api';
+import { profileApi, orderApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -76,6 +76,19 @@ const ProfilePage = () => {
       console.error('Update failed:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    try {
+      const res = await orderApi.cancel(orderId);
+      if (res.success) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
+      }
+    } catch (err) {
+      console.error('Cancel order failed:', err);
+      alert('Failed to cancel order.');
     }
   };
 
@@ -229,6 +242,16 @@ const ProfilePage = () => {
                             </div>
                           ))}
                         </div>
+                        {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                          <div className="mt-6 flex justify-end">
+                            <button
+                              onClick={() => handleCancelOrder(order.id)}
+                              className="px-4 py-2 border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+                            >
+                              Cancel Order
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
