@@ -32,7 +32,12 @@ router.get('/', publicLimiter, async (req, res) => {
     const offset = (page - 1) * limit;
     const category = req.query.category;
     const sort = req.query.sort || 'created_at';
-    const order = req.query.order === 'asc' ? true : false;
+    
+    // Default to 'desc' for created_at, but 'asc' for price/name
+    const defaultOrder = sort === 'created_at' ? false : true;
+    const order = req.query.order 
+      ? (req.query.order === 'asc' ? true : false) 
+      : defaultOrder;
 
     let query = supabase
       .from('products')

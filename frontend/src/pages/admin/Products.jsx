@@ -13,10 +13,11 @@ import {
   Package,
   AlertCircle
 } from 'lucide-react';
-import { productsApi } from '../../services/api';
+import { productsApi, categoryApi } from '../../services/api';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -26,7 +27,7 @@ const AdminProducts = () => {
   // Form State
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Men',
+    category: '',
     price: '',
     stock: '',
     image_url: '',
@@ -37,7 +38,7 @@ const AdminProducts = () => {
     if (editProduct) {
       setFormData({
         name: editProduct.name || '',
-        category: editProduct.category || 'Men',
+        category: editProduct.category || '',
         price: editProduct.price || '',
         stock: editProduct.stock || '',
         image_url: editProduct.image_url || '',
@@ -46,7 +47,7 @@ const AdminProducts = () => {
     } else {
       setFormData({
         name: '',
-        category: 'Men',
+        category: '',
         price: '',
         stock: '',
         image_url: '',
@@ -69,9 +70,21 @@ const AdminProducts = () => {
     }
   }, [page]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await categoryApi.list();
+      if (res.success) {
+        setCategories(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchCategories();
+  }, [fetchProducts, fetchCategories]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
@@ -321,11 +334,14 @@ const AdminProducts = () => {
                       className="w-full bg-gray-50 border-2 border-transparent focus:border-primary outline-none px-5 py-4 rounded-2xl font-bold uppercase transition-all"
                       value={formData.category}
                       onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      required
                     >
-                      <option>Men</option>
-                      <option>Women</option>
-                      <option>Bags</option>
-                      <option>Shoes</option>
+                      <option value="">Select Category</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

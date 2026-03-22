@@ -8,7 +8,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 const MotionBtn = motion.button;
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
